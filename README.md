@@ -6,8 +6,8 @@ Cash libraries themselves, or require the main program to run at all.
 Tested with GNU Cash 2.4.10.
 
 The library supports extracting the account tree, including all
-transactions and splits. It does not support scheduled transactions,
-price tables, and likely none but the most basic commodities. In
+prices, transactions and splits. It does not support scheduled 
+transactions, and likely none but the most basic commodities. In 
 particular, writing of XML files is not supported.
 
 [python]: http://www.python.org/
