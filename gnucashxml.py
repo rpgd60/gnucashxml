@@ -238,7 +238,14 @@ class Price(object):
             self.value,
             self.currency)
 
-
+    def __lt__(self, other):
+        # For sorted() only
+        if isinstance(other, Price):
+            return self.date < other.date
+        else:
+            False
+            
+            
 ##################################################################
 # XML file parsing
 
@@ -291,9 +298,10 @@ def _book_from_tree(tree):
 
     prices = []
     t = tree.find('{http://www.gnucash.org/XML/gnc}pricedb')
-    for child in t.findall('price'):
-        price = _price_from_tree(child, commoditydict)
-        prices.append(price)
+    if t:
+        for child in t.findall('price'):
+            price = _price_from_tree(child, commoditydict)
+            prices.append(price)
     
     root_account = None
     accounts = []
