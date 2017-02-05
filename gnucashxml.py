@@ -61,20 +61,20 @@ class Book(object):
             outp.append('\tnamespace {}'.format(comm.space))
             outp.append('')
     
-        for account, children, splits in self.walk():
-            if account.fullname():
-                outp.append('account {}'.format(account.fullname()))
-                if account.description:
-                    outp.append('\tnote {}'.format(account.description))
-                outp.append('\tcheck commodity == "{}"'.format(account.commodity))
-                outp.append('')
+        for account in self.accounts:
+            outp.append('account {}'.format(account.fullname()))
+            if account.description:
+                outp.append('\tnote {}'.format(account.description))
+            outp.append('\tcheck commodity == "{}"'.format(account.commodity))
+            outp.append('')
          
         for trn in sorted(self.transactions):
             outp.append('{:%Y/%m/%d} * {}'.format(trn.date, trn.description))
             for spl in trn.splits:
-                outp.append('\t{:50} {:12.2f} {} ;{}'.format(spl.account.fullname(), spl.value, spl.account.commodity,  spl.memo or ' '))
+                outp.append('\t{:50} {:12.2f} {} {}'.format(spl.account.fullname(), spl.value, 
+                    spl.account.commodity, 
+                    '; '+spl.memo if spl.memo else ''))
             outp.append('')
-        
         
         return '\n'.join(outp)
 
@@ -166,6 +166,7 @@ class Transaction(object):
         self.guid = guid
         self.currency = currency
         self.date = date
+        self.post_date = date             # for compatibility with piecash
         self.date_entered = date_entered
         self.description = description
         self.splits = splits or []
