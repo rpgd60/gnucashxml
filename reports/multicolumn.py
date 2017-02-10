@@ -5,7 +5,6 @@ Generate a multicolumn report for an account
 
 import sys
 import datetime
-
 from gnucashxml import from_filename
 
 def multicolumn(book, account, date1, date2):
@@ -33,6 +32,7 @@ def multicolumn(book, account, date1, date2):
             totals[j] = totals.setdefault(j, 0) + value
             print(value, end=",")            
         print(split.transaction.description)
+    
     print("", end=",")
     for i in otheraccountlist:
         print(totals[i], end=",")
