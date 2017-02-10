@@ -13,7 +13,7 @@ def multicolumn(book, account, date1, date2):
     account = mybook.find_account(account)
     
     if account is None:
-        raise "Cannot find account "+account
+        raise Exception("Cannot find account "+account)
         
     splits = [j for j in account.splits if date1 <= j.transaction.date.date() <= date2]
     
