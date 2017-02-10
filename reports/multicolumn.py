@@ -8,7 +8,7 @@ import datetime
 
 from gnucashxml import from_filename
 
-def multisplit(book, account, date1, date2):
+def multicolumn(book, account, date1, date2):
     mybook = from_filename(book)
     account = mybook.find_account(account)
     
@@ -48,4 +48,4 @@ if __name__ == "__main__":
     date1=datetime.date(2000,1,1)
     date2=datetime.date(2017,1,1))
     
-    multisplit("test.gnucash", "Salary", date1, date2)
+    multicolumn("test.gnucash", "Salary", date1, date2)
