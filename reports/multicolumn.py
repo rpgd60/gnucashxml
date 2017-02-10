@@ -32,7 +32,6 @@ def multicolumn(book, account, date1, date2):
     for split in sorted(splits):
         print(split.transaction.date.date(),end=",")
         for j in otheraccountlist:
-            value = 0
             value = sum([i.value for i in split.transaction.splits if j==i.account])
             totals[j] = totals.setdefault(j, 0) + value
             print(value,end=",")
@@ -46,6 +45,6 @@ def multicolumn(book, account, date1, date2):
     
 if __name__ == "__main__":
     date1=datetime.date(2000,1,1)
-    date2=datetime.date(2017,1,1))
+    date2=datetime.date(2017,1,1)
     
     multicolumn("test.gnucash", "Salary", date1, date2)
