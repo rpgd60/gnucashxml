@@ -38,8 +38,9 @@ class Book(object):
     It doesn't really do anything at all by itself, except to have
     a reference to the accounts, transactions, prices, and commodities.
     """
-    def __init__(self, guid, prices=None, transactions=None, root_account=None,
+    def __init__(self, tree, guid, prices=None, transactions=None, root_account=None,
                  accounts=None, commodities=None, slots=None):
+        self.tree = tree
         self.guid = guid
         self.prices = prices
         self.transactions = transactions or []
@@ -58,34 +59,39 @@ class Book(object):
         for account, children, splits in self.walk():
             if account.name == name:
                 return account
-    
+
+    def find_guid(self, guid):
+        for item in self.accounts + self.transactions:
+            if item.guid == guid:
+                return item
+
     def ledger(self):
         outp = []
-        
+
         for comm in self.commodities:
             outp.append('commodity {}'.format(comm.name))
             outp.append('\tnamespace {}'.format(comm.space))
             outp.append('')
-    
+
         for account in self.accounts:
             outp.append('account {}'.format(account.fullname()))
             if account.description:
                 outp.append('\tnote {}'.format(account.description))
             outp.append('\tcheck commodity == "{}"'.format(account.commodity))
             outp.append('')
-         
+
         for trn in sorted(self.transactions):
             outp.append('{:%Y/%m/%d} * {}'.format(trn.date, trn.description))
             for spl in trn.splits:
-                outp.append('\t{:50} {:12.2f} {} {}'.format(spl.account.fullname(), 
-                            spl.value, 
-                            spl.account.commodity, 
+                outp.append('\t{:50} {:12.2f} {} {}'.format(spl.account.fullname(),
+                            spl.value,
+                            spl.account.commodity,
                             '; '+spl.memo if spl.memo else ''))
             outp.append('')
-        
+
         return '\n'.join(outp)
 
-        
+
 class Commodity(object):
     """
     A commodity is something that's stored in GNU Cash accounts.
@@ -130,9 +136,9 @@ class Account(object):
                 return self.name
         else:
             return ''
-    
+
     def __repr__(self):
-        return "<Account '{}'[{}] {}...>".format(self.name, self.commodity, self.guid[:10])
+        return "<Account '{}[{}]' {}...>".format(self.name, self.commodity, self.guid[:10])
 
     def walk(self):
         """
@@ -160,14 +166,14 @@ class Account(object):
         for account, children, splits in self.walk():
             split_list.extend(splits)
         return sorted(split_list)
-    
+
     def __lt__(self,other):
         # For sorted() only
         if isinstance(other, Account):
             return self.fullname() < other.fullname()
         else:
             False
-        
+
 
 class Transaction(object):
     """
@@ -189,7 +195,8 @@ class Transaction(object):
         self.slots = slots or {}
 
     def __repr__(self):
-        return "<Transaction on {} '{}' {}...>".format(self.date, self.description, self.guid[:6])
+        return "<Transaction on {} '{}' {}...>".format(
+            self.date, self.description, self.guid[:6])
 
     def __lt__(self, other):
         # For sorted() only
@@ -220,10 +227,10 @@ class Split(object):
         self.slots = slots
 
     def __repr__(self):
-        return "<Split {} '{}' {} {} {}...>".format(self.transaction.date, 
-            self.transaction.description, 
+        return "<Split {} '{}' {} {} {}...>".format(self.transaction.date,
+            self.transaction.description,
             self.transaction.currency,
-            self.value, 
+            self.value,
             self.guid[:6])
 
     def __lt__(self, other):
@@ -260,8 +267,8 @@ class Price(object):
             return self.date < other.date
         else:
             False
-            
-            
+
+
 ##################################################################
 # XML file parsing
 
@@ -287,7 +294,7 @@ def parse(fobj):
         tree = ElementTree.parse(fobj)
     except ParseError:
         raise ValueError("File stream was not a valid GNU Cash v2 XML file")
-        
+
     root = tree.getroot()
     if root.tag != 'gnc-v2':
         raise ValueError("File stream was not a valid GNU Cash v2 XML file")
@@ -328,21 +335,21 @@ def _book_from_tree(tree):
 
     def _commodity_find(space, name):
         return commoditydict.setdefault((space,name), Commodity(name=name, space=space))
-    
+
     commodities = []        # This will store the Gnucash root list of commodities
     commoditydict = {}      # This will store the list of commodities used
                             # The above two may not be equal! eg prices may include commodities
                             # that are not represented in the account tree
-                            
+
     for child in tree.findall('{http://www.gnucash.org/XML/gnc}commodity'):
         comm = _commodity_from_tree(child)
         commodities.append(_commodity_find(comm.space, comm.name))
-        #COMPACT: 
+        #COMPACT:
         #name = child.find('{http://www.gnucash.org/XML/cmdty}id').text
         #space = child.find('{http://www.gnucash.org/XML/cmdty}space').text
         #commodities.append(_commodity_find(space, name))
-        
-        
+
+
     # Implemented:
     # - price
     # - price:guid
@@ -354,37 +361,37 @@ def _book_from_tree(tree):
         price = '{http://www.gnucash.org/XML/price}'
         cmdty = '{http://www.gnucash.org/XML/cmdty}'
         ts = "{http://www.gnucash.org/XML/ts}"
-        
+
         guid = tree.find(price + 'id').text
         value = _parse_number(tree.find(price + 'value').text)
         date = parse_date(tree.find(price + 'time/' + ts + 'date').text)
-        
+
         currency_space = tree.find(price + "currency/" + cmdty + "space").text
         currency_name = tree.find(price + "currency/" + cmdty + "id").text
         currency = _commodity_find(currency_space, currency_name)
-        
+
         commodity_space = tree.find(price + "commodity/" + cmdty + "space").text
         commodity_name = tree.find(price + "commodity/" + cmdty + "id").text
         commodity = _commodity_find(commodity_space, commodity_name)
-        
-        return Price(guid=guid, 
-                     commodity=commodity, 
-                     date=date, 
-                     value=value, 
+
+        return Price(guid=guid,
+                     commodity=commodity,
+                     date=date,
+                     value=value,
                      currency=currency)
-        
+
     prices = []
     t = tree.find('{http://www.gnucash.org/XML/gnc}pricedb')
     if t is not None:
         for child in t.findall('price'):
             price = _price_from_tree(child)
             prices.append(price)
-    
+
     root_account = None
     accounts = []
     accountdict = {}
     parentdict = {}
-    
+
     for child in tree.findall('{http://www.gnucash.org/XML/gnc}account'):
         parent_guid, acc = _account_from_tree(child, commoditydict)
         if acc.actype == 'ROOT':
@@ -407,7 +414,8 @@ def _book_from_tree(tree):
 
     slots = _slots_from_tree(
         tree.find('{http://www.gnucash.org/XML/book}slots'))
-    return Book(guid=guid,
+    return Book(tree=tree,
+                guid=guid,
                 prices=prices,
                 transactions=transactions,
                 root_account=root_account,
@@ -418,7 +426,7 @@ def _book_from_tree(tree):
 
 
 
-         
+
 # Implemented:
 # - act:name
 # - act:id
@@ -484,11 +492,12 @@ def _transaction_from_tree(tree, accountdict, commoditydict):
     date_entered = parse_date(tree.find(trn + "date-entered/" +
                                         ts + "date").text)
     description = tree.find(trn + "description").text
-    
+
+    #rarely used
     num = tree.find(trn + "num")
     if num is not None:
         num = num.text
-    
+
     slots = _slots_from_tree(tree.find(trn + "slots"))
     transaction = Transaction(guid=guid,
                               currency=currency,
@@ -534,7 +543,7 @@ def _split_from_tree(tree, accountdict, transaction):
     action = tree.find(split + "action")
     if action is not None:
         action = action.text
-    
+
     split = Split(guid=guid,
                   memo=memo,
                   reconciled_state=reconciled_state,
