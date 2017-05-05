@@ -1,9 +1,9 @@
 # GNU Cash XML Library
 
-`gnucashxml` is a [Python][] library to parse [GNU Cash][] XML files.
+`gnucashxml` is a pure [Python][] library to parse [GNU Cash][] XML files.
 This allows writing reporting utilities that do not rely on the GNU
 Cash libraries themselves, or require the main program to run at all.
-Tested with GNU Cash 2.4.10.
+Tested with GNU Cash 2.6.16.
 
 The library supports extracting the account tree, including all
 prices, transactions and splits. It does not support scheduled 
@@ -36,6 +36,12 @@ These classes all have a `slots` member, which is a simple dictionary
 for extra information. GNU Cash information such as "hidden" are
 recorded here.
 
+It allows you to:
+- open existing Gnucash documents and access accounts, transactions, splits
+
+Scripts are available to:
+- export to ledger-cli format (http://www.ledger-cli.org/)
+
 ## Example
 
 ```Python
@@ -55,3 +61,10 @@ print "Total income : {:9.2f}".format(income_total * -1)
 print "Total expense: {:9.2f}".format(expense_total)
 ```
 
+Print list of account names:
+```Python
+import gnucashxml
+with gnucashxml.from_filename("test.gnucash") as book:
+    for acc in book.accounts:
+        print(acc.fullname())
+```
