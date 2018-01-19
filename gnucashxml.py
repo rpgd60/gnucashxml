@@ -564,6 +564,7 @@ def _split_from_tree(tree, accountdict, transaction):
 # - slot:value
 # - ts:date
 # - gdate
+# - list
 def _slots_from_tree(tree):
     if tree is None:
         return {}
@@ -586,6 +587,8 @@ def _slots_from_tree(tree):
             slots[key] = parse_date(value.find(ts + "date").text)
         elif type_ == 'frame':
             slots[key] = _slots_from_tree(value)
+        elif type_ == 'list':
+            slots[key] = [_slots_from_tree(lelt) for lelt in value.findall(slot + "value")]
         else:
             raise RuntimeError("Unknown slot type {}".format(type_))
     return slots
