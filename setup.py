@@ -16,8 +16,11 @@ setup(name='gnucashxml',
       author_email="forcer@forcix.cx",
       url="https://github.com/jorgenschaefer/gnucashxml",
       py_modules=['gnucashxml'],
+      install_requires=[
+          'python-dateutil'
+      ],
       classifiers=[
-          "Development Status :: 5 - Production/Stable",
+          "Development Status :: 4 - Beta",
           "Intended Audience :: Developers",
           ("License :: OSI Approved :: "
            "GNU General Public License v3 or later (GPLv3+)"),
