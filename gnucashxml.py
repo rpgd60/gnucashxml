@@ -25,11 +25,12 @@ from dateutil.parser import parse as parse_date
 
 try:
     import lxml.etree as ElementTree
-except:
+except ImportError:
     from xml.etree import ElementTree
 from xml.etree.ElementTree import ParseError
 
 __version__ = "1.1"
+
 
 class Book(object):
     """
@@ -38,6 +39,7 @@ class Book(object):
     It doesn't really do anything at all by itself, except to have
     a reference to the accounts, transactions, prices, and commodities.
     """
+
     def __init__(self, tree, guid, prices=None, transactions=None, root_account=None,
                  accounts=None, commodities=None, slots=None):
         self.tree = tree
@@ -84,9 +86,9 @@ class Book(object):
             outp.append('{:%Y/%m/%d} * {}'.format(trn.date, trn.description))
             for spl in trn.splits:
                 outp.append('\t{:50} {:12.2f} {} {}'.format(spl.account.fullname(),
-                            spl.value,
-                            spl.account.commodity,
-                            '; '+spl.memo if spl.memo else ''))
+                                                            spl.value,
+                                                            spl.account.commodity,
+                                                            '; ' + spl.memo if spl.memo else ''))
             outp.append('')
 
         return '\n'.join(outp)
@@ -98,6 +100,7 @@ class Commodity(object):
 
     Consists of a name (or id) and a space (namespace).
     """
+
     def __init__(self, name, space=None):
         self.name = name
         self.space = space
@@ -113,6 +116,7 @@ class Account(object):
     """
     An account is part of a tree structure of accounts and contains splits.
     """
+
     def __init__(self, name, guid, actype, parent=None,
                  commodity=None, commodity_scu=None,
                  description=None, slots=None):
@@ -167,7 +171,7 @@ class Account(object):
             split_list.extend(splits)
         return sorted(split_list)
 
-    def __lt__(self,other):
+    def __lt__(self, other):
         # For sorted() only
         if isinstance(other, Account):
             return self.fullname() < other.fullname()
@@ -187,7 +191,7 @@ class Transaction(object):
         self.guid = guid
         self.currency = currency
         self.date = date
-        self.post_date = date             # for compatibility with piecash
+        self.post_date = date  # for compatibility with piecash
         self.date_entered = date_entered
         self.description = description
         self.num = num or None
@@ -228,10 +232,10 @@ class Split(object):
 
     def __repr__(self):
         return "<Split {} '{}' {} {} {}...>".format(self.transaction.date,
-            self.transaction.description,
-            self.transaction.currency,
-            self.value,
-            self.guid[:6])
+                                                    self.transaction.description,
+                                                    self.transaction.currency,
+                                                    self.value,
+                                                    self.guid[:6])
 
     def __lt__(self, other):
         # For sorted() only
@@ -246,6 +250,7 @@ class Price(object):
     A price is GNUCASH record of the price of a commodity against a currency
     Consists of date, currency, commodity,  value
     """
+
     def __init__(self, guid=None, commodity=None, currency=None,
                  date=None, value=None):
         self.guid = guid
@@ -256,10 +261,10 @@ class Price(object):
 
     def __repr__(self):
         return "<Price {}... {:%Y/%m/%d}: {} {}/{} >".format(self.guid[:6],
-            self.date,
-            self.value,
-            self.commodity,
-            self.currency)
+                                                             self.date,
+                                                             self.value,
+                                                             self.commodity,
+                                                             self.currency)
 
     def __lt__(self, other):
         # For sorted() only
@@ -332,23 +337,21 @@ def _book_from_tree(tree):
         space = tree.find('{http://www.gnucash.org/XML/cmdty}space').text
         return Commodity(name=name, space=space)
 
-
     def _commodity_find(space, name):
-        return commoditydict.setdefault((space,name), Commodity(name=name, space=space))
+        return commoditydict.setdefault((space, name), Commodity(name=name, space=space))
 
-    commodities = []        # This will store the Gnucash root list of commodities
-    commoditydict = {}      # This will store the list of commodities used
-                            # The above two may not be equal! eg prices may include commodities
-                            # that are not represented in the account tree
+    commodities = []  # This will store the Gnucash root list of commodities
+    commoditydict = {}  # This will store the list of commodities used
+    # The above two may not be equal! eg prices may include commodities
+    # that are not represented in the account tree
 
     for child in tree.findall('{http://www.gnucash.org/XML/gnc}commodity'):
         comm = _commodity_from_tree(child)
         commodities.append(_commodity_find(comm.space, comm.name))
-        #COMPACT:
-        #name = child.find('{http://www.gnucash.org/XML/cmdty}id').text
-        #space = child.find('{http://www.gnucash.org/XML/cmdty}space').text
-        #commodities.append(_commodity_find(space, name))
-
+        # COMPACT:
+        # name = child.find('{http://www.gnucash.org/XML/cmdty}id').text
+        # space = child.find('{http://www.gnucash.org/XML/cmdty}space').text
+        # commodities.append(_commodity_find(space, name))
 
     # Implemented:
     # - price
@@ -424,9 +427,6 @@ def _book_from_tree(tree):
                 slots=slots)
 
 
-
-
-
 # Implemented:
 # - act:name
 # - act:id
@@ -467,6 +467,7 @@ def _account_from_tree(tree, commoditydict):
                                 commodity_scu=commodity_scu,
                                 slots=slots)
 
+
 # Implemented:
 # - trn:id
 # - trn:currency
@@ -485,15 +486,15 @@ def _transaction_from_tree(tree, accountdict, commoditydict):
     currency_space = tree.find(trn + "currency/" +
                                cmdty + "space").text
     currency_name = tree.find(trn + "currency/" +
-                               cmdty + "id").text
+                              cmdty + "id").text
     currency = commoditydict[(currency_space, currency_name)]
     date = parse_date(tree.find(trn + "date-posted/" +
-                                       ts + "date").text)
+                                ts + "date").text)
     date_entered = parse_date(tree.find(trn + "date-entered/" +
                                         ts + "date").text)
     description = tree.find(trn + "description").text
 
-    #rarely used
+    # rarely used
     num = tree.find(trn + "num")
     if num is not None:
         num = num.text
@@ -592,6 +593,7 @@ def _slots_from_tree(tree):
         else:
             raise RuntimeError("Unknown slot type {}".format(type_))
     return slots
+
 
 def _parse_number(numstring):
     num, denum = numstring.split("/")
