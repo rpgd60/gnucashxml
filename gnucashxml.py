@@ -101,9 +101,11 @@ class Commodity(object):
     Consists of a name (or id) and a space (namespace).
     """
 
-    def __init__(self, name, space=None):
-        self.name = name
+    def __init__(self, space, symbol, name=None, xcode=None):
         self.space = space
+        self.symbol = symbol
+        self.name = name
+        self.xcode = xcode
 
     def __str__(self):
         return self.name
@@ -322,36 +324,39 @@ def _book_from_tree(tree):
     guid = tree.find('{http://www.gnucash.org/XML/book}id').text
 
     # Implemented:
-    # - cmdty:id
     # - cmdty:space
+    # - cmdty:id => Symbol
+    # - cmdty:name
+    # - cmdty:xcode => optional, e.g. ISIN/WKN
     #
     # Not implemented:
     # - cmdty:get_quotes => unknown, empty, optional
     # - cmdty:quote_tz => unknown, empty, optional
     # - cmdty:source => text, optional, e.g. "currency"
-    # - cmdty:name => optional, e.g. "template"
-    # - cmdty:xcode => optional, e.g. "template"
     # - cmdty:fraction => optional, e.g. "1"
     def _commodity_from_tree(tree):
-        name = tree.find('{http://www.gnucash.org/XML/cmdty}id').text
         space = tree.find('{http://www.gnucash.org/XML/cmdty}space').text
-        return Commodity(name=name, space=space)
+        symbol = tree.find('{http://www.gnucash.org/XML/cmdty}id').text
+        commodity = Commodity(space=space, symbol=symbol)
+        try:
+            commodity.name = tree.find('{http://www.gnucash.org/XML/cmdty}name').text
+        except AttributeError:
+            pass
 
-    def _commodity_find(space, name):
-        return commoditydict.setdefault((space, name), Commodity(name=name, space=space))
+        try:
+            commodity.xcode = tree.find('{http://www.gnucash.org/XML/cmdty}xcode').text
+        except AttributeError:
+            pass
+
+        return commodity
 
     commodities = []  # This will store the Gnucash root list of commodities
-    commoditydict = {}  # This will store the list of commodities used
-    # The above two may not be equal! eg prices may include commodities
-    # that are not represented in the account tree
-
     for child in tree.findall('{http://www.gnucash.org/XML/gnc}commodity'):
-        comm = _commodity_from_tree(child)
-        commodities.append(_commodity_find(comm.space, comm.name))
-        # COMPACT:
-        # name = child.find('{http://www.gnucash.org/XML/cmdty}id').text
-        # space = child.find('{http://www.gnucash.org/XML/cmdty}space').text
-        # commodities.append(_commodity_find(space, name))
+        commodity = _commodity_from_tree(child)
+        commodities.append(commodity)
+
+    # Map unique combination of namespace/symbol to instance of Commodity
+    commoditydict = {(c.space, c.symbol): c for c in commodities}
 
     # Implemented:
     # - price
@@ -370,12 +375,14 @@ def _book_from_tree(tree):
         date = parse_date(tree.find(price + 'time/' + ts + 'date').text)
 
         currency_space = tree.find(price + "currency/" + cmdty + "space").text
-        currency_name = tree.find(price + "currency/" + cmdty + "id").text
-        currency = _commodity_find(currency_space, currency_name)
+        currency_id = tree.find(price + "currency/" + cmdty + "id").text
+        # pricedb may contain currencies not part of the commodities root list
+        currency = commoditydict.setdefault((currency_space, currency_id),
+                                            Commodity(space=currency_space, symbol=currency_id))
 
         commodity_space = tree.find(price + "commodity/" + cmdty + "space").text
-        commodity_name = tree.find(price + "commodity/" + cmdty + "id").text
-        commodity = _commodity_find(commodity_space, commodity_name)
+        commodity_id = tree.find(price + "commodity/" + cmdty + "id").text
+        commodity = commoditydict[(commodity_space, commodity_id)]
 
         return Price(guid=guid,
                      commodity=commodity,
