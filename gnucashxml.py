@@ -21,6 +21,8 @@
 
 import decimal
 import gzip
+from typing import Any
+
 from dateutil.parser import parse as parse_date
 
 try:
@@ -62,6 +64,9 @@ class Book(object):
             if account.name == name:
                 return account
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+
     def find_guid(self, guid):
         for item in self.accounts + self.transactions:
             if item.guid == guid:
@@ -79,7 +84,7 @@ class Book(object):
             outp.append('account {}'.format(account.fullname()))
             if account.description:
                 outp.append('\tnote {}'.format(account.description))
-            outp.append('\tcheck commodity == "{}"'.format(account.commodity))
+#            outp.append('\tcheck commodity == "{}"'.format(account.commodity))
             outp.append('')
 
         for trn in sorted(self.transactions):
@@ -87,7 +92,7 @@ class Book(object):
             for spl in trn.splits:
                 outp.append('\t{:50} {:12.2f} {} {}'.format(spl.account.fullname(),
                                                             spl.value,
-                                                            spl.account.commodity,
+                                                            spl.account.commodity.symbol if spl.account.commodity.symbol else '',
                                                             '; ' + spl.memo if spl.memo else ''))
             outp.append('')
 
@@ -117,6 +122,7 @@ class Commodity(object):
 class Account(object):
     """
     An account is part of a tree structure of accounts and contains splits.
+
     """
 
     def __init__(self, name, guid, actype, parent=None,
